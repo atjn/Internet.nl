@@ -1,6 +1,7 @@
 # Copyright: 2022, ECP, NLnet Labs and the Internet.nl contributors
 # SPDX-License-Identifier: Apache-2.0
 import random
+from operator import itemgetter
 from timeit import default_timer as timer
 from typing import Optional, Dict, Tuple, Union, Callable
 
@@ -197,23 +198,20 @@ def find_result(batch_domain, model):
     submit_date = batch_domain.batch_request.submit_date
     try:
         if model is WebTestTls:
-            result = model.objects.filter(domain=batch_domain.domain, webtestset__timestamp__gte=submit_date).latest(
-                "id"
-            )
+            result = model.objects.filter(domain=batch_domain.domain, webtestset__timestamp__gte=submit_date)
         elif model is MailTestTls:
-            result = model.objects.filter(domain=batch_domain.domain, testset__timestamp__gte=submit_date).latest("id")
+            result = model.objects.filter(domain=batch_domain.domain, testset__timestamp__gte=submit_date)
         elif model is MailTestDnssec:
-            result = model.objects.filter(domain=batch_domain.domain, testset__timestamp__gte=submit_date).latest("id")
+            result = model.objects.filter(domain=batch_domain.domain, testset__timestamp__gte=submit_date)
         elif model is WebTestAppsecpriv:
-            result = model.objects.filter(domain=batch_domain.domain, webtestset__timestamp__gte=submit_date).latest(
-                "id"
-            )
+            result = model.objects.filter(domain=batch_domain.domain, webtestset__timestamp__gte=submit_date)
         elif model is DomainTestDnssec:
-            result = model.objects.filter(
-                domain=batch_domain.domain, maildomain_id=None, timestamp__gte=submit_date
-            ).latest("id")
+            result = model.objects.filter(domain=batch_domain.domain, maildomain_id=None, timestamp__gte=submit_date)
         else:
-            result = model.objects.filter(domain=batch_domain.domain, timestamp__gte=submit_date).latest("id")
+            result = model.objects.filter(domain=batch_domain.domain, timestamp__gte=submit_date)
+        if not len(result):
+            return None
+        result = sorted(result, itemgetter("id"), reverse=True)[0]
     except model.DoesNotExist:
         result = None
     return result
