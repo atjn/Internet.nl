@@ -387,3 +387,54 @@ class HeaderCheckerContentSecurityPolicyTestCase(SimpleTestCase):
     def test_other_source_hash_4(self):
         headers = self.base_policy + "frame-ancestors 'none', style-src 'sha513-fdasdfas5678589+5346/sfdg=='"
         self._is_good_and_not_parsed(headers, "style-src")
+
+
+class HeaderCheckerReferrerPolicyTestCase(SimpleTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.checker = http_headers.HeaderCheckerReferrerPolicy()
+        cls.enabled = "referrer_policy_enabled"
+        cls.score = "referrer_policy_score"
+        cls.values = "referrer_policy_values"
+
+    def _is_good(self, header):
+        results = self.checker.get_positive_values()
+        self.checker.check(header, results, "example.nl")
+        self.assertTrue(results[self.enabled])
+        self.assertEqual(results[self.score], scoring.WEB_APPSECPRIV_REFERRER_POLICY_GOOD)
+        self.assertEqual(results[self.values], header.split(","))
+
+    def _is_bad(self, header):
+        results = self.checker.get_positive_values()
+        self.checker.check(header, results, "example.nl")
+        self.assertFalse(results[self.enabled])
+        self.assertEqual(results[self.score], scoring.WEB_APPSECPRIV_REFERRER_POLICY_BAD)
+        self.assertEqual(results[self.values], header.split(",") if header else [])
+
+    def test_no_policy(self):
+        self._is_bad(None)
+
+    def test_empty_policy(self):
+        self._is_bad('""')
+
+    def test_good_policies(self):
+        good_policies = ["same-origin", "no-referrer"]
+        for policy in good_policies:
+            self._is_good(policy)
+
+    def test_bad_policies(self):
+        bad_policies = [
+            "no-referrer-when-downgrade",
+            "origin",
+            "origin-when-cross-origin",
+            "strict-origin",
+            "strict-origin-when-cross-origin",
+            "unsafe-url",
+        ]
+        for policy in bad_policies:
+            self._is_bad(policy)
+
+    def test_multiple_policies(self):
+        self._is_good("same-origin,no-referrer")
+        self._is_bad("same-origin,unsafe-url")
